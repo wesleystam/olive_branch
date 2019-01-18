@@ -30,13 +30,17 @@ module OliveBranch
         string.dasherize
       end
 
-      def underscore_params(env)
+      def underscore_params(env, ignore_attributes)
         req = ActionDispatch::Request.new(env)
         req.request_parameters
         req.query_parameters
 
-        env["action_dispatch.request.request_parameters"].deep_transform_keys!(&:underscore)
-        env["action_dispatch.request.query_parameters"].deep_transform_keys!(&:underscore)
+        env["action_dispatch.request.request_parameters"].deep_transform_keys! do |key|
+          ignore_attributes.include?(key) ? key : key.underscore
+        end
+        env["action_dispatch.request.query_parameters"].deep_transform_keys! do |key|
+          ignore_attributes.include?(key) ? key : key.underscore
+        end
       end
     end
   end
@@ -50,10 +54,11 @@ module OliveBranch
       @exclude_response = args[:exclude_response] || Checks.method(:default_exclude)
       @exclude_params = args[:exclude_params] || Checks.method(:default_exclude)
       @default_inflection = args[:inflection]
+      @ignore_attributes = args[:ignore_attributes] || []
     end
 
     def call(env)
-      Transformations.underscore_params(env) unless exclude_params?(env)
+      Transformations.underscore_params(env, @ignore_attributes) unless exclude_params?(env)
       status, headers, response = @app.call(env)
 
       return [status, headers, response] if exclude_response?(env, headers)

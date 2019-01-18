@@ -106,6 +106,25 @@ RSpec.describe OliveBranch::Middleware do
       expect(incoming_params["post"]["authorName"]).not_to be_nil
     end
 
+    it "does not modify incoming param if listed in ignore_attributes" do
+      incoming_params = nil
+
+      app = -> (env) do
+        incoming_params = env["action_dispatch.request.query_parameters"]
+        [200, {}, ["{}"]]
+      end
+
+      env = params.merge(
+        "CONTENT_TYPE"        => "application/json",
+        "HTTP_X_KEY_INFLECTION" => "camel",
+        "QUERY_STRING" => "categoryFilter[categoryName]=economics",
+      )
+
+      described_class.new(app, ignore_attributes: ["categoryName"]).call(env)
+
+      expect(incoming_params["category_filter"]["categoryName"]).to eq "economics"
+    end
+
     context "with a custom content type check" do
       let(:content_type_check) do
         ->(content_type) { content_type == "foo/type" }
